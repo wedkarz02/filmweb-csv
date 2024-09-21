@@ -22,7 +22,7 @@ pub async fn fetch_movies(
     let client = Client::new();
 
     loop {
-        let url = format!("{}/vote/title/film?page={}", base_url, page);
+        let url = format!("{}/logged/vote/title/film?page={}", base_url, page);
 
         let response = client
             .get(url.clone())

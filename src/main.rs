@@ -1,15 +1,15 @@
 use std::env;
 
-use anyhow::Ok;
+use anyhow::Context;
 
 mod api;
 mod error;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
+    dotenvy::dotenv().context(".env file not found")?;
 
-    let base_url = "https://www.filmweb.pl/api/v1/logged";
+    let base_url = "https://www.filmweb.pl/api/v1";
     let cookie_header =
         env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
 

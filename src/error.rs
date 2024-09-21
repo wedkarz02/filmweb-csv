@@ -16,9 +16,9 @@ impl Display for ApiError {
         match self {
             Self::NotFound(url) => write!(f, "Endpoint not found: {}", url),
             Self::Unauthorized => {
-                write!(f, "Unauthorized, invalid or missing cookie header")
+                write!(f, "Unauthorized, (missing cookie header)")
             }
-            Self::BadRequest => write!(f, "Bad request"),
+            Self::BadRequest => write!(f, "Invalid or expired tokens"),
             Self::InternalServerError => write!(f, "Internal server error"),
             Self::ReqwestError(err) => write!(f, "reqwest error: {}", err),
             Self::SerdeJsonError(err) => write!(f, "serde_json error: {}", err),

@@ -1,9 +1,5 @@
 # TODO
 
-Invalid cookie returns a 400 bad request instead of 401 unauthorized in application/json for some reason. It's correct in the browser.
-
----
-
 Endpoint to the movie details:
 
 ```
