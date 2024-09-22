@@ -1,9 +1,11 @@
 use std::env;
 
 use anyhow::Context;
+use api::entity_to_movie;
 
 mod api;
 mod error;
+mod util;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -13,9 +15,12 @@ async fn main() -> anyhow::Result<()> {
     let cookie_header =
         env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
 
-    let ratings = api::fetch_movies(base_url, &cookie_header).await?;
+    let ratings = api::fetch_ratings(base_url, &cookie_header).await?;
 
-    println!("{:#?}", ratings);
+    for rating in ratings {
+        let movie_info = entity_to_movie(base_url, &rating).await?;
+        println!("{:#?}", movie_info);
+    }
 
     Ok(())
 }

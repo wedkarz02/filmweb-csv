@@ -1,5 +1,7 @@
 use std::{error::Error, fmt::Display};
 
+use reqwest::{Response, StatusCode};
+
 #[derive(Debug)]
 pub enum ApiError {
     NotFound(String),
@@ -31,6 +33,7 @@ impl Error for ApiError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ApiError::ReqwestError(ref err) => Some(err),
+            ApiError::SerdeJsonError(ref err) => Some(err),
             _ => None,
         }
     }
@@ -45,5 +48,18 @@ impl From<reqwest::Error> for ApiError {
 impl From<serde_json::Error> for ApiError {
     fn from(value: serde_json::Error) -> Self {
         ApiError::SerdeJsonError(value)
+    }
+}
+
+pub async fn get_body(response: Response) -> Result<String, ApiError> {
+    match response.status() {
+        StatusCode::OK => Ok(response.text().await?),
+        StatusCode::BAD_REQUEST => Err(ApiError::BadRequest),
+        StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized),
+        StatusCode::NOT_FOUND => {
+            Err(ApiError::NotFound(response.url().to_string()))
+        }
+        StatusCode::INTERNAL_SERVER_ERROR => Err(ApiError::InternalServerError),
+        _ => Err(ApiError::Unrecognized),
     }
 }
