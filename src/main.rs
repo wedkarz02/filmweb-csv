@@ -7,18 +7,19 @@ mod api;
 mod error;
 mod util;
 
+static BASE_URL: &str = "https://www.filmweb.pl/api/v1";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().context(".env file not found")?;
 
-    let base_url = "https://www.filmweb.pl/api/v1";
     let cookie_header =
         env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
 
-    let ratings = api::fetch_ratings(base_url, &cookie_header).await?;
+    let ratings = api::fetch_ratings(&cookie_header).await?;
 
     for rating in ratings {
-        let movie_info = entity_to_movie(base_url, &rating).await?;
+        let movie_info = entity_to_movie(&rating).await?;
         println!("{:#?}", movie_info);
     }
 

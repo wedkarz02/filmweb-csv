@@ -1,10 +1,8 @@
 use reqwest::Client;
+use reqwest::{Response, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{get_body, ApiError},
-    util::ToDate,
-};
+use crate::{error::ApiError, util::ToDate, BASE_URL};
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Debug)]
@@ -33,8 +31,20 @@ struct MovieInfo {
     posterPath: String,
 }
 
+pub async fn get_body(response: Response) -> Result<String, ApiError> {
+    match response.status() {
+        StatusCode::OK => Ok(response.text().await?),
+        StatusCode::BAD_REQUEST => Err(ApiError::BadRequest),
+        StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized),
+        StatusCode::NOT_FOUND => {
+            Err(ApiError::NotFound(response.url().to_string()))
+        }
+        StatusCode::INTERNAL_SERVER_ERROR => Err(ApiError::InternalServerError),
+        _ => Err(ApiError::Unrecognized),
+    }
+}
+
 pub async fn fetch_ratings(
-    base_url: &str,
     cookie_header: &str,
 ) -> Result<Vec<RatingEntity>, ApiError> {
     let mut ratings: Vec<RatingEntity> = Vec::new();
@@ -43,7 +53,7 @@ pub async fn fetch_ratings(
     let client = Client::new();
 
     loop {
-        let url = format!("{}/logged/vote/title/film?page={}", base_url, page);
+        let url = format!("{}/logged/vote/title/film?page={}", BASE_URL, page);
 
         let response = client
             .get(url.clone())
@@ -65,11 +75,8 @@ pub async fn fetch_ratings(
     Ok(ratings)
 }
 
-async fn fetch_movie_info(
-    base_url: &str,
-    entity: u64,
-) -> Result<MovieInfo, ApiError> {
-    let url = format!("{}/title/{}/info", base_url, entity);
+async fn fetch_movie_info(entity: u64) -> Result<MovieInfo, ApiError> {
+    let url = format!("{}/title/{}/info", BASE_URL, entity);
     let client = Client::new();
 
     let response =
@@ -82,11 +89,10 @@ async fn fetch_movie_info(
 }
 
 pub async fn entity_to_movie(
-    base_url: &str,
     rating_entity: &RatingEntity,
 ) -> Result<MovieRating, ApiError> {
     let entity = rating_entity.entity;
-    let movie_info = fetch_movie_info(base_url, entity).await?;
+    let movie_info = fetch_movie_info(entity).await?;
     let view_date = rating_entity
         .viewDate
         .to_date()
