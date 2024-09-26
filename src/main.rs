@@ -6,12 +6,14 @@ use std::{
 
 use anyhow::Context;
 use api::{entity_to_movie, MovieRating};
+use clap::Parser;
 use csv::WriterBuilder;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::time::Instant;
 
 mod api;
+mod cli;
 mod error;
 mod util;
 
@@ -40,6 +42,14 @@ fn movies_to_csv(
 async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     dotenvy::dotenv().context(".env file not found")?;
+
+    let args = cli::Args::parse();
+
+    match args.fetch {
+        cli::FetchType::Movies => println!("movies set"),
+        cli::FetchType::Games => println!("games set"),
+        cli::FetchType::Series => println!("series set"),
+    }
 
     let cookie_header =
         env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
