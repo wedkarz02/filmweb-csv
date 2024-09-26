@@ -19,5 +19,6 @@ Cargo.lock
 # Test text files
 asdf.txt
 
-# Exported CSV file
-exports.csv
+# Exported CSV files
+exports/
+*.csv
