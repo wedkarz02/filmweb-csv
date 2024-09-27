@@ -13,14 +13,17 @@ TBA
 
 ## Table of Contents
 
-1. [Requirements](#requirements)
-2. [Download](#download)
-3. [Getting Started](#getting-started)\
-    3.1. [Getting the Cookie header](#getting-the-cookie-header)\
-    3.2. [Setting up the enviroment](#setting-up-the-enviroment)\
-    3.3. [Building](#building)
-4. [Usage](#usage)
-5. [License](#license)
+* [Requirements](#requirements)
+* [Download](#download)
+* [Getting Started](#getting-started)
+    * [Getting the Cookie header](#getting-the-cookie-header)
+        * [Security Considerations](#security-considerations)
+        * [Using a script](#1-using-a-script)
+        * [Doing it manually](#2-doing-it-manually)
+    * [Setting up the enviroment](#setting-up-the-enviroment)
+    * [Building](#building)
+* [Usage](#usage)
+* [License](#license)
 
 ## Requirements
 
@@ -44,7 +47,55 @@ Or use the *Download ZIP* option from the Github repository [page](https://githu
 
 ### Getting the Cookie header
 
-TBA (remember to warn about keeping this cookie private)
+This app requires you to authenticate via an API that unfortunately doesn't have a documented login process. To work around this, you need to get the 'Cookie' header, which is generated when you log into Filmweb.
+
+#### Security Considerations
+- **Cookies contain sensitive session information**, which could be used to impersonate you or access your account.
+- You should **never run scripts from untrusted sources** or provide your cookies to unknown parties.
+- The script below is designed only to copy the cookies from your active session, and no data is sent anywhere—it's copied to your clipboard for use in this application, which you can (and should) verify yourself as the script is very simple.
+
+#### 1. Using a script 
+
+The ```getCookie.js``` script is designed to simplify the process of extracting and copying your session cookies so that you can use them in the application. This is necessary because the Filmweb API requires a valid 'Cookie' header for authorization.
+
+How to copy the 'Cookie' header using the script:
+
+1. Open your browser and log in to [Filmweb](https://www.filmweb.pl/).
+2. Open the DevTools by pressing ```F12```, ```Ctrl+Shift+I``` or other shortcut depending on your browser.
+3. Navigate to ```Console``` tab.
+4. Paste the JavaScript snippet and press *Enter*.
+5. Done, the 'Cookie' value is now in your clipboard.
+
+This is the JavaScript you need to paste (also avaliable in ```scripts/getCookie.js``` file with a full disclaimer):
+
+```js
+/**
+ * DISCLAIMER: ...
+ */
+
+(function () {
+    const cookies = document.cookie;
+    const textarea = document.createElement("textarea");
+    textarea.value = cookies;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+})();
+
+```
+
+#### 2. Doing it manually
+
+If, for any reason, you don't want to use the JavaScript method, here's how to do it manually:
+
+1. Open your browser and log in to [Filmweb](https://www.filmweb.pl/).
+2. In a new tab, navigate to [https://filmweb.pl/api/v1/](https://filmweb.pl/api/v1/), you should see ```Filmweb API :)``` text on the page.
+3. Open the DevTools by pressing ```F12```, ```Ctrl+Shift+I``` or other shortcut depending on your browser.
+4. Navigate to ```Network``` tab and refresh the page.
+5. Select the row with ```v1/``` as the Name.
+6. Make sure you are in ```Headers``` tab and scroll down to the ```Request Headers``` section.
+7. Find the ```Cookie``` parameter and copy it's value (without the *Cookie:* part, just the value). It will likely be very long, make sure it's all there.
 
 ### Setting up the enviroment
 
