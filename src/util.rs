@@ -1,15 +1,14 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, Utc};
 
 pub trait ToDate {
-    fn to_date(&self) -> Option<NaiveDate>;
+    fn to_date_from_timestamp(&self) -> Option<DateTime<Utc>>;
 }
 
 impl ToDate for u64 {
-    fn to_date(&self) -> Option<NaiveDate> {
-        let year = (self / 10000) as i32;
-        let month = ((self / 100) % 100) as u32;
-        let day = (self % 100) as u32;
+    fn to_date_from_timestamp(&self) -> Option<DateTime<Utc>> {
+        let seconds = self / 1000;
+        let nanoseconds = (self % 1000) * 1_000_000;
 
-        NaiveDate::from_ymd_opt(year, month, day)
+        DateTime::from_timestamp(seconds as i64, nanoseconds as u32)
     }
 }

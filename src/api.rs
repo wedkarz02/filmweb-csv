@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use reqwest::Client;
 use reqwest::{Response, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -5,6 +7,11 @@ use serde::{Deserialize, Serialize};
 use crate::util::ToDate;
 use crate::Config;
 use crate::{error::ApiError, BASE_URL};
+
+pub trait RawEntity {
+    fn entity(&self) -> u64;
+    fn timestamp(&self) -> u64;
+}
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Debug)]
@@ -15,11 +22,33 @@ pub struct RatingRaw {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Rating {
-    title: String,
-    view_date: String,
-    rate: u8,
+impl RawEntity for RatingRaw {
+    fn entity(&self) -> u64 {
+        self.entity
+    }
+
+    fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct WishlistedRaw {
+    entity: u64,
+    timestamp: u64,
+    level: u8,
+    followMask: Option<u8>,
+}
+
+impl RawEntity for WishlistedRaw {
+    fn entity(&self) -> u64 {
+        self.entity
+    }
+
+    fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
 }
 
 #[allow(non_snake_case)]
@@ -30,7 +59,16 @@ struct GeneralInfo {
     year: u16,
     r#type: String,
     subType: String,
-    posterPath: String,
+    posterPath: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ItemData {
+    title: String,
+    original_title: String,
+    year: u16,
+    date: String,
+    rate: Option<u8>,
 }
 
 pub async fn get_body(response: Response) -> Result<String, ApiError> {
@@ -44,6 +82,37 @@ pub async fn get_body(response: Response) -> Result<String, ApiError> {
         StatusCode::INTERNAL_SERVER_ERROR => Err(ApiError::InternalServerError),
         _ => Err(ApiError::Unrecognized),
     }
+}
+
+async fn fetch_general_info(
+    config: &Config,
+    client: &Client,
+    entity: u64,
+) -> Result<GeneralInfo, ApiError> {
+    let endpoint = format!("title/{}/info", entity);
+    let body = fetch_resource(config, client, &endpoint).await?;
+    let general_info: GeneralInfo = serde_json::from_str(&body)?;
+    Ok(general_info)
+}
+
+pub async fn raw_to_item<T>(
+    config: &Config,
+    client: &Client,
+    raw: &T,
+) -> Result<ItemData, ApiError>
+where
+    T: RawEntity,
+{
+    let general_info = fetch_general_info(config, client, raw.entity()).await?;
+    let date = raw.timestamp().to_date_from_timestamp().unwrap_or_default();
+
+    Ok(ItemData {
+        title: general_info.title,
+        original_title: general_info.originalTitle,
+        year: general_info.year,
+        date: date.format("%Y-%m-%d").to_string(),
+        rate: None,
+    })
 }
 
 pub async fn fetch_resource(
@@ -60,58 +129,32 @@ pub async fn fetch_resource(
         .send()
         .await?;
 
-    return get_body(response).await;
+    get_body(response).await
 }
 
-pub async fn fetch_movie_ratings(
+pub async fn fetch_pages<T>(
     config: &Config,
-) -> Result<Vec<RatingRaw>, ApiError> {
+    endpoint: &str,
+) -> Result<Vec<T>, ApiError>
+where
+    T: serde::de::DeserializeOwned,
+{
     let client = Client::new();
-    let mut ratings: Vec<RatingRaw> = Vec::new();
+    let mut deserialized: Vec<T> = Vec::new();
     let mut page: u16 = 1;
 
     loop {
-        let endpoint = format!("logged/vote/title/film?page={}", page);
+        let endpoint = format!("{}?page={}", endpoint, page);
         let body = fetch_resource(config, &client, &endpoint).await?;
-        let mut body_json: Vec<RatingRaw> = serde_json::from_str(&body)?;
+        let mut body_json: Vec<T> = serde_json::from_str(&body)?;
 
         if body_json.is_empty() {
             break;
         }
 
-        ratings.append(&mut body_json);
+        deserialized.append(&mut body_json);
         page += 1;
     }
 
-    Ok(ratings)
-}
-
-async fn fetch_general_info(
-    config: &Config,
-    client: &Client,
-    entity: u64,
-) -> Result<GeneralInfo, ApiError> {
-    let endpoint = format!("title/{}/info", entity);
-    let body = fetch_resource(config, &client, &endpoint).await?;
-    let general_info: GeneralInfo = serde_json::from_str(&body)?;
-    Ok(general_info)
-}
-
-pub async fn raw_to_rating(
-    config: &Config,
-    client: &Client,
-    raw: &RatingRaw,
-) -> Result<Rating, ApiError> {
-    let entity = raw.entity;
-    let general_info = fetch_general_info(config, client, entity).await?;
-    let view_date = raw
-        .viewDate
-        .to_date()
-        .expect("Filmweb should be setting correct dates");
-
-    Ok(Rating {
-        title: general_info.title,
-        view_date: view_date.to_string(),
-        rate: raw.rate,
-    })
+    Ok(deserialized)
 }

@@ -51,11 +51,11 @@ This app requires you to authenticate via an API that unfortunately doesn't have
 - You should **never** provide your cookies to unknown parties.
 
 How to get the Cookie header:
-1. Open your browser and log in to [Filmweb](https://www.filmweb.pl/).
-2. In a new tab, navigate to [https://filmweb.pl/api/v1/](https://filmweb.pl/api/v1/), you should see ```Filmweb API :)``` text on the page.
+1. Open your browser and log into [Filmweb](https://www.filmweb.pl/).
+2. In a new tab, navigate to [https://www.filmweb.pl/api/v1/logged/info](https://www.filmweb.pl/api/v1/logged/info), you should see your profile details on the page.
 3. Open the DevTools by pressing ```F12```, ```Ctrl+Shift+I``` or other shortcut depending on your browser.
 4. Navigate to ```Network``` tab and refresh the page.
-5. Select the row with ```v1/``` as the Name.
+5. Select the row with ```info``` as the Name.
 6. Make sure you are in ```Headers``` tab and scroll down to the ```Request Headers``` section.
 7. Find the ```Cookie``` parameter and copy it's value (without the *Cookie:* part, just the value). It will likely be very long, make sure it's all there.
 
