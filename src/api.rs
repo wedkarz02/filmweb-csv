@@ -11,6 +11,7 @@ use crate::{error::ApiError, BASE_URL};
 pub trait RawEntity {
     fn entity(&self) -> u64;
     fn timestamp(&self) -> u64;
+    fn rate(&self) -> Option<u8>;
 }
 
 #[allow(non_snake_case)]
@@ -30,6 +31,10 @@ impl RawEntity for RatingRaw {
     fn timestamp(&self) -> u64 {
         self.timestamp
     }
+
+    fn rate(&self) -> Option<u8> {
+        Some(self.rate)
+    }
 }
 
 #[allow(non_snake_case)]
@@ -48,6 +53,10 @@ impl RawEntity for WishlistedRaw {
 
     fn timestamp(&self) -> u64 {
         self.timestamp
+    }
+
+    fn rate(&self) -> Option<u8> {
+        None
     }
 }
 
@@ -111,7 +120,7 @@ where
         original_title: general_info.originalTitle,
         year: general_info.year,
         date: date.format("%Y-%m-%d").to_string(),
-        rate: None,
+        rate: raw.rate(),
     })
 }
 

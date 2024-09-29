@@ -48,6 +48,10 @@ fn item_to_csv(
     }
 
     let out = File::create(file_path)?;
+
+    // FIXME: This writes the whole header, but serde_json skips fields if the value
+    //        is None.
+    //        Make it not write the field header if values are None.
     let mut writer = WriterBuilder::new().delimiter(b';').from_writer(out);
 
     for item in items {
@@ -77,20 +81,20 @@ async fn main() -> anyhow::Result<()> {
     println!("config: {:#?}", config);
 
     println!("[INFO]: Fetching from the API...");
-    // let wishlisted_movies_raw: Vec<api::WishlistedRaw> =
-    //     api::fetch_pages(&config, "logged/want2see/film").await?;
-    let ratings: Vec<api::RatingRaw> =
-        api::fetch_pages(&config, "logged/vote/title/film").await?;
+    let wishlisted_movies_raw: Vec<api::WishlistedRaw> =
+        api::fetch_pages(&config, "logged/want2see/film").await?;
+    // let ratings: Vec<api::RatingRaw> =
+    //     api::fetch_pages(&config, "logged/vote/title/film").await?;
 
-    // let pb = ProgressBar::new(wishlisted_movies_raw.len() as u64);
-    let pb = ProgressBar::new(ratings.len() as u64);
+    let pb = ProgressBar::new(wishlisted_movies_raw.len() as u64);
+    // let pb = ProgressBar::new(ratings.len() as u64);
     pb.set_style(ProgressStyle::default_bar()
         .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")?
         .progress_chars("#>-"));
 
     pb.inc(0);
-    // let movies = try_join_all(wishlisted_movies_raw.iter().map(|raw| {
-    let movies = try_join_all(ratings.iter().map(|raw| {
+    let movies = try_join_all(wishlisted_movies_raw.iter().map(|raw| {
+        // let movies = try_join_all(ratings.iter().map(|raw| {
         let pb = pb.clone();
         let cfg = config.clone();
         let client = Client::new();
