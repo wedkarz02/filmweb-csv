@@ -1,15 +1,18 @@
 use std::{
     env,
+    fmt::Debug,
     fs::{create_dir_all, File},
     path::{self, Path},
 };
 
 use anyhow::Context;
-use api::{entity_to_movie, MovieRating};
+use api::Rating;
 use clap::Parser;
+use cli::{FetchFrom, FetchType};
 use csv::WriterBuilder;
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::Client;
 use tokio::time::Instant;
 
 mod api;
@@ -19,10 +22,25 @@ mod util;
 
 static BASE_URL: &str = "https://www.filmweb.pl/api/v1";
 
-fn movies_to_csv(
-    file_path: &Path,
-    movies: &[MovieRating],
-) -> anyhow::Result<()> {
+#[allow(unused)]
+#[derive(Clone)]
+struct Config {
+    fetch_type: FetchType,
+    fetch_from: FetchFrom,
+    cookie_header: String,
+}
+
+impl Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("fetch_type", &self.fetch_type)
+            .field("fetch_from", &self.fetch_from)
+            .field("cookie_header", &"...")
+            .finish()
+    }
+}
+
+fn ratings_to_csv(file_path: &Path, ratings: &[Rating]) -> anyhow::Result<()> {
     if let Some(parent) = file_path.parent() {
         create_dir_all(parent)?;
     }
@@ -30,8 +48,8 @@ fn movies_to_csv(
     let out = File::create(file_path)?;
     let mut writer = WriterBuilder::new().delimiter(b';').from_writer(out);
 
-    for movie in movies {
-        writer.serialize(movie)?;
+    for rating in ratings {
+        writer.serialize(rating)?;
     }
 
     writer.flush()?;
@@ -43,19 +61,21 @@ async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     dotenvy::dotenv().context(".env file not found")?;
 
-    let args = cli::Args::parse();
-
-    match args.fetch {
-        cli::FetchType::Movies => println!("movies set"),
-        cli::FetchType::Games => println!("games set"),
-        cli::FetchType::Series => println!("series set"),
-    }
-
     let cookie_header =
         env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
 
+    let args = cli::Args::parse();
+
+    let config = Config {
+        fetch_type: args.fetch,
+        fetch_from: args.from,
+        cookie_header,
+    };
+
+    println!("config: {:#?}", config);
+
     println!("[INFO]: Fetching from the API...");
-    let ratings = api::fetch_ratings(&cookie_header).await?;
+    let ratings = api::fetch_movie_ratings(&config).await?;
 
     let pb = ProgressBar::new(ratings.len() as u64);
     pb.set_style(ProgressStyle::default_bar()
@@ -63,10 +83,12 @@ async fn main() -> anyhow::Result<()> {
         .progress_chars("#>-"));
 
     pb.inc(0);
-    let movies = try_join_all(ratings.iter().map(|rating| {
+    let movies = try_join_all(ratings.iter().map(|raw| {
         let pb = pb.clone();
+        let cfg = config.clone();
+        let client = Client::new();
         async move {
-            let movie = entity_to_movie(rating).await;
+            let movie = api::raw_to_rating(&cfg, &client, raw).await;
             pb.inc(1);
             movie
         }
@@ -76,12 +98,12 @@ async fn main() -> anyhow::Result<()> {
     pb.finish();
 
     let file_path = Path::new("exports/exports.csv");
-    movies_to_csv(file_path, &movies)?;
+    ratings_to_csv(file_path, &movies)?;
     let abs_path = path::absolute(file_path)?;
     println!("[INFO]: Data saved to: {:?}", abs_path);
 
     let elapsed = Instant::now().duration_since(start);
-    println!("[INFO]: Total time elapsed: {:?}", elapsed);
+    println!("[INFO]: Total time elapsed: {:.4?}", elapsed);
 
     Ok(())
 }

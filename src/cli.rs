@@ -7,10 +7,20 @@ pub enum FetchType {
     Games,
 }
 
+#[derive(Debug, ValueEnum, Clone)]
+pub enum FetchFrom {
+    Rated,
+    Watchlist,
+}
+
 #[derive(Debug, Parser)]
 #[command(version, about, long_about =  None)]
 pub struct Args {
     /// Type of resource to fetch
-    #[arg(value_enum, short, long, default_value_t = FetchType::Movies)]
+    #[arg(value_enum, long, default_value_t = FetchType::Movies)]
     pub fetch: FetchType,
+
+    /// Fetch from rated or watchlist
+    #[arg(value_enum, long, default_value_t = FetchFrom::Rated)]
+    pub from: FetchFrom,
 }
