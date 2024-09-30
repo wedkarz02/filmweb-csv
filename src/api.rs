@@ -11,7 +11,7 @@ use crate::{error::ApiError, BASE_URL};
 pub trait RawEntity {
     fn entity(&self) -> u64;
     fn timestamp(&self) -> u64;
-    fn rate(&self) -> Option<u8>;
+    fn rate(&self) -> u8;
 }
 
 #[allow(non_snake_case)]
@@ -32,21 +32,21 @@ impl RawEntity for RatingRaw {
         self.timestamp
     }
 
-    fn rate(&self) -> Option<u8> {
-        Some(self.rate)
+    fn rate(&self) -> u8 {
+        self.rate
     }
 }
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Debug)]
-pub struct WishlistedRaw {
+pub struct WatchlistRaw {
     entity: u64,
     timestamp: u64,
     level: u8,
     followMask: Option<u8>,
 }
 
-impl RawEntity for WishlistedRaw {
+impl RawEntity for WatchlistRaw {
     fn entity(&self) -> u64 {
         self.entity
     }
@@ -55,8 +55,8 @@ impl RawEntity for WishlistedRaw {
         self.timestamp
     }
 
-    fn rate(&self) -> Option<u8> {
-        None
+    fn rate(&self) -> u8 {
+        0
     }
 }
 
@@ -73,11 +73,11 @@ struct GeneralInfo {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ItemData {
-    title: String,
-    original_title: String,
-    year: u16,
-    date: String,
-    rate: Option<u8>,
+    pub title: String,
+    pub original_title: String,
+    pub year: u16,
+    pub date: String,
+    pub rate: u8,
 }
 
 pub async fn get_body(response: Response) -> Result<String, ApiError> {

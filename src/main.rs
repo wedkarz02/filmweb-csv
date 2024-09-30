@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
+use api::ItemData;
 use clap::Parser;
 use cli::{FetchFrom, FetchType};
 use csv::WriterBuilder;
@@ -27,6 +28,7 @@ struct Config {
     fetch_type: FetchType,
     fetch_from: FetchFrom,
     cookie_header: String,
+    progress_bar: ProgressBar,
 }
 
 impl Debug for Config {
@@ -48,10 +50,6 @@ fn item_to_csv(
     }
 
     let out = File::create(file_path)?;
-
-    // FIXME: This writes the whole header, but serde_json skips fields if the value
-    //        is None.
-    //        Make it not write the field header if values are None.
     let mut writer = WriterBuilder::new().delimiter(b';').from_writer(out);
 
     for item in items {
@@ -62,40 +60,16 @@ fn item_to_csv(
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let start = Instant::now();
-    dotenvy::dotenv().context(".env file not found")?;
-
-    let cookie_header =
-        env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
-
-    let args = cli::Args::parse();
-
-    let config = Config {
-        fetch_type: args.fetch,
-        fetch_from: args.from,
-        cookie_header,
-    };
-
-    println!("config: {:#?}", config);
-
-    println!("[INFO]: Fetching from the API...");
-    let wishlisted_movies_raw: Vec<api::WishlistedRaw> =
-        api::fetch_pages(&config, "logged/want2see/film").await?;
-    // let ratings: Vec<api::RatingRaw> =
-    //     api::fetch_pages(&config, "logged/vote/title/film").await?;
-
-    let pb = ProgressBar::new(wishlisted_movies_raw.len() as u64);
-    // let pb = ProgressBar::new(ratings.len() as u64);
-    pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")?
-        .progress_chars("#>-"));
-
-    pb.inc(0);
-    let movies = try_join_all(wishlisted_movies_raw.iter().map(|raw| {
-        // let movies = try_join_all(ratings.iter().map(|raw| {
-        let pb = pb.clone();
+async fn execute_futures<T>(
+    config: &Config,
+    raw_items: &[T],
+) -> anyhow::Result<Vec<ItemData>>
+where
+    T: api::RawEntity,
+{
+    config.progress_bar.inc(0);
+    let movies = try_join_all(raw_items.iter().map(|raw| {
+        let pb = config.progress_bar.clone();
         let cfg = config.clone();
         let client = Client::new();
         async move {
@@ -105,11 +79,69 @@ async fn main() -> anyhow::Result<()> {
         }
     }))
     .await?;
+    config.progress_bar.finish();
+    Ok(movies)
+}
 
-    pb.finish();
+async fn get_movies_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
+    let ratings: Vec<api::RatingRaw> =
+        api::fetch_pages(config, "logged/vote/title/film").await?;
+    config.progress_bar.set_length(ratings.len() as u64);
 
-    let file_path = Path::new("exports/exports.csv");
-    item_to_csv(file_path, &movies)?;
+    execute_futures(config, &ratings).await
+}
+
+async fn get_movies_watchlist(
+    config: &Config,
+) -> anyhow::Result<Vec<ItemData>> {
+    let watchlist: Vec<api::WatchlistRaw> =
+        api::fetch_pages(config, "logged/want2see/film").await?;
+    config.progress_bar.set_length(watchlist.len() as u64);
+
+    execute_futures(config, &watchlist).await
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let start = Instant::now();
+    dotenvy::dotenv().context(".env file not found")?;
+
+    let args = cli::Args::parse();
+
+    let cookie_header =
+        env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
+
+    let pb = ProgressBar::new(0);
+    pb.set_style(ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")?
+        .progress_chars("#>-"));
+
+    let config = Config {
+        fetch_type: args.fetch,
+        fetch_from: args.from,
+        cookie_header,
+        progress_bar: pb,
+    };
+
+    println!("[INFO]: Fetching from the API...");
+
+    let (items, file_path) = match (&config.fetch_type, &config.fetch_from) {
+        (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
+            get_movies_rated(&config).await?,
+            Path::new("exports/movies_rated.csv"),
+        ),
+        (cli::FetchType::Movies, cli::FetchFrom::Watchlist) => (
+            get_movies_watchlist(&config).await?,
+            Path::new("exports/movies_watchlist.csv"),
+        ),
+        // (cli::FetchType::Series, cli::FetchFrom::Rated) => {}
+        // (cli::FetchType::Series, cli::FetchFrom::Watchlist) => {}
+        // (cli::FetchType::Games, cli::FetchFrom::Rated) => {}
+        // (cli::FetchType::Games, cli::FetchFrom::Watchlist) => {}
+        _ => todo!(),
+    };
+
+    item_to_csv(file_path, &items)?;
     println!("[INFO]: Data saved to: {:?}", path::absolute(file_path)?);
 
     let elapsed = Instant::now().duration_since(start);
