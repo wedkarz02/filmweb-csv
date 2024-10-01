@@ -22,7 +22,6 @@ mod util;
 
 static BASE_URL: &str = "https://www.filmweb.pl/api/v1";
 
-#[allow(unused)]
 #[derive(Clone)]
 struct Config {
     fetch_type: FetchType,
