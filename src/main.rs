@@ -36,6 +36,7 @@ impl Debug for Config {
             .field("fetch_type", &self.fetch_type)
             .field("fetch_from", &self.fetch_from)
             .field("cookie_header", &"...")
+            .field("progress_bar", &self.progress_bar)
             .finish()
     }
 }
@@ -100,6 +101,40 @@ async fn get_movies_watchlist(
     execute_futures(config, &watchlist).await
 }
 
+async fn get_series_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
+    let ratings: Vec<api::RatingRaw> =
+        api::fetch_pages(config, "logged/vote/title/serial").await?;
+    config.progress_bar.set_length(ratings.len() as u64);
+
+    execute_futures(config, &ratings).await
+}
+
+async fn get_series_watchlist(
+    config: &Config,
+) -> anyhow::Result<Vec<ItemData>> {
+    let watchlist: Vec<api::WatchlistRaw> =
+        api::fetch_pages(config, "logged/want2see/serial").await?;
+    config.progress_bar.set_length(watchlist.len() as u64);
+
+    execute_futures(config, &watchlist).await
+}
+
+async fn get_games_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
+    let ratings: Vec<api::RatingRaw> =
+        api::fetch_pages(config, "logged/vote/title/videogame").await?;
+    config.progress_bar.set_length(ratings.len() as u64);
+
+    execute_futures(config, &ratings).await
+}
+
+async fn get_games_watchlist(config: &Config) -> anyhow::Result<Vec<ItemData>> {
+    let watchlist: Vec<api::WatchlistRaw> =
+        api::fetch_pages(config, "logged/want2see/videogame").await?;
+    config.progress_bar.set_length(watchlist.len() as u64);
+
+    execute_futures(config, &watchlist).await
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
@@ -133,11 +168,22 @@ async fn main() -> anyhow::Result<()> {
             get_movies_watchlist(&config).await?,
             Path::new("exports/movies_watchlist.csv"),
         ),
-        // (cli::FetchType::Series, cli::FetchFrom::Rated) => {}
-        // (cli::FetchType::Series, cli::FetchFrom::Watchlist) => {}
-        // (cli::FetchType::Games, cli::FetchFrom::Rated) => {}
-        // (cli::FetchType::Games, cli::FetchFrom::Watchlist) => {}
-        _ => todo!(),
+        (cli::FetchType::Series, cli::FetchFrom::Rated) => (
+            get_series_rated(&config).await?,
+            Path::new("exports/series_rated.csv"),
+        ),
+        (cli::FetchType::Series, cli::FetchFrom::Watchlist) => (
+            get_series_watchlist(&config).await?,
+            Path::new("exports/series_watchlist.csv"),
+        ),
+        (cli::FetchType::Games, cli::FetchFrom::Rated) => (
+            get_games_rated(&config).await?,
+            Path::new("exports/games_rated.csv"),
+        ),
+        (cli::FetchType::Games, cli::FetchFrom::Watchlist) => (
+            get_games_watchlist(&config).await?,
+            Path::new("exports/games_watchlist.csv"),
+        ),
     };
 
     item_to_csv(file_path, &items)?;

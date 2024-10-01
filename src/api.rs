@@ -67,7 +67,7 @@ struct GeneralInfo {
     originalTitle: String,
     year: u16,
     r#type: String,
-    subType: String,
+    subType: Option<String>,
     posterPath: Option<String>,
 }
 
