@@ -3,13 +3,18 @@
 [![Rust CI](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml)
 ![GitHub License](https://img.shields.io/github/license/wedkarz02/filmweb-csv)
 
-**Please note** that this project is under active development. It's mostly usable but may contain bugs, missing features, etc.
-
-This README is not complete yet.
-
 ## Overview
 
-TBA
+```filmweb-csv``` is a CLI application that allows users to effortlessly fetch their personal data from [Filmweb](https://www.filmweb.pl/) (basically Polish IMDB, but with a cooler name) and export this data into CSV format for easy analysis or sharing.
+
+Key features include:
+ * Fetching rated and watchlisted items.
+ * Support for movies, TV shows and video games.
+ * Export to CSV for easy use with tools like Excel or python.
+
+Personally, I use it to generate histograms and analyze the statistical distribution of my movie ratings.
+
+**Disclaimer**: The Filmweb API has not been officially released, therefore it's not at all documented and might change at any time, which could break this app. If you encounter any issues, feel free to open a Github Issue and I'll do my best to resolve them quickly.
 
 ## Table of Contents
 
@@ -89,9 +94,61 @@ $ cargo build --release
 
 It's up to you whether to build in debug or release mode. It doesn't really matter since the main bottleneck of the application is the API fetching. If you don't mind slightly longer compilation time, go for the release mode for some extra runtime performance.
 
+The binary is self-contained so you can easily copy / move / symlink it from the ```target/``` directory:
+
+```bash
+$ cp ./target/debug/filmweb-csv ./filmweb-csv
+$ mv ./target/debug/filmweb-csv ./filmweb-csv
+$ ln ./target/debug/filmweb-csv ./filmweb-csv
+```
+
 ## Usage
 
-*To be added after implementing a command line interface.*
+To run the application use ```cargo``` or run the compiled executable directly:
+
+```bash
+$ cargo run -- [OPTIONS]
+$ ./filmweb-csv [OPTIONS]
+```
+
+The app defaults to fetching rated movies if no options were given.
+
+This is a full copy of a help message, which you can also get by using the ```--help``` option:
+
+```
+$ ./filmweb-csv --help
+
+
+Usage: filmweb-csv [OPTIONS]
+
+Options:
+      --fetch <FETCH>  Type of resource to fetch [default: movies] [possible values: movies, series, games]
+      --from <FROM>    Fetch from rated or watchlist [default: rated] [possible values: rated, watchlist]
+  -h, --help           Print help
+  -V, --version        Print version
+```
+
+Full list of options:
+
+```bash
+# Get rated movies:
+$ ./filmweb-csv --fetch movies --from rated
+
+# Get watchlisted movies:
+$ ./filmweb-csv --fetch movies --from watchlist
+
+# Get rated series:
+$ ./filmweb-csv --fetch series --from rated
+
+# Get watchlisted series:
+$ ./filmweb-csv --fetch series --from watchlist
+
+# Get rated video games:
+$ ./filmweb-csv --fetch games --from rated
+
+# Get watchlisted video games:
+$ ./filmweb-csv --fetch games --from watchlist
+```
 
 ## License
 
