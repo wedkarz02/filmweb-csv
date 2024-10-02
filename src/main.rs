@@ -83,56 +83,17 @@ where
     Ok(movies)
 }
 
-async fn get_movies_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
-    let ratings: Vec<api::RatingRaw> =
-        api::fetch_pages(config, "logged/vote/title/film").await?;
-    config.progress_bar.set_length(ratings.len() as u64);
-
-    execute_futures(config, &ratings).await
-}
-
-async fn get_movies_watchlist(
+async fn get_items<T>(
     config: &Config,
-) -> anyhow::Result<Vec<ItemData>> {
-    let watchlist: Vec<api::WatchlistRaw> =
-        api::fetch_pages(config, "logged/want2see/film").await?;
-    config.progress_bar.set_length(watchlist.len() as u64);
+    endpoint: &str,
+) -> anyhow::Result<Vec<ItemData>>
+where
+    T: api::RawEntity + serde::de::DeserializeOwned,
+{
+    let items: Vec<T> = api::fetch_pages(config, endpoint).await?;
+    config.progress_bar.set_length(items.len() as u64);
 
-    execute_futures(config, &watchlist).await
-}
-
-async fn get_series_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
-    let ratings: Vec<api::RatingRaw> =
-        api::fetch_pages(config, "logged/vote/title/serial").await?;
-    config.progress_bar.set_length(ratings.len() as u64);
-
-    execute_futures(config, &ratings).await
-}
-
-async fn get_series_watchlist(
-    config: &Config,
-) -> anyhow::Result<Vec<ItemData>> {
-    let watchlist: Vec<api::WatchlistRaw> =
-        api::fetch_pages(config, "logged/want2see/serial").await?;
-    config.progress_bar.set_length(watchlist.len() as u64);
-
-    execute_futures(config, &watchlist).await
-}
-
-async fn get_games_rated(config: &Config) -> anyhow::Result<Vec<ItemData>> {
-    let ratings: Vec<api::RatingRaw> =
-        api::fetch_pages(config, "logged/vote/title/videogame").await?;
-    config.progress_bar.set_length(ratings.len() as u64);
-
-    execute_futures(config, &ratings).await
-}
-
-async fn get_games_watchlist(config: &Config) -> anyhow::Result<Vec<ItemData>> {
-    let watchlist: Vec<api::WatchlistRaw> =
-        api::fetch_pages(config, "logged/want2see/videogame").await?;
-    config.progress_bar.set_length(watchlist.len() as u64);
-
-    execute_futures(config, &watchlist).await
+    execute_futures(config, &items).await
 }
 
 #[tokio::main]
@@ -161,27 +122,36 @@ async fn main() -> anyhow::Result<()> {
 
     let (items, file_path) = match (&config.fetch_type, &config.fetch_from) {
         (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
-            get_movies_rated(&config).await?,
+            get_items::<api::RatingRaw>(&config, "logged/vote/title/film")
+                .await?,
             Path::new("exports/movies_rated.csv"),
         ),
         (cli::FetchType::Movies, cli::FetchFrom::Watchlist) => (
-            get_movies_watchlist(&config).await?,
+            get_items::<api::WatchlistRaw>(&config, "logged/want2see/film")
+                .await?,
             Path::new("exports/movies_watchlist.csv"),
         ),
         (cli::FetchType::Series, cli::FetchFrom::Rated) => (
-            get_series_rated(&config).await?,
+            get_items::<api::RatingRaw>(&config, "logged/vote/title/serial")
+                .await?,
             Path::new("exports/series_rated.csv"),
         ),
         (cli::FetchType::Series, cli::FetchFrom::Watchlist) => (
-            get_series_watchlist(&config).await?,
+            get_items::<api::WatchlistRaw>(&config, "logged/want2see/serial")
+                .await?,
             Path::new("exports/series_watchlist.csv"),
         ),
         (cli::FetchType::Games, cli::FetchFrom::Rated) => (
-            get_games_rated(&config).await?,
+            get_items::<api::RatingRaw>(&config, "logged/vote/title/videogame")
+                .await?,
             Path::new("exports/games_rated.csv"),
         ),
         (cli::FetchType::Games, cli::FetchFrom::Watchlist) => (
-            get_games_watchlist(&config).await?,
+            get_items::<api::WatchlistRaw>(
+                &config,
+                "logged/want2see/videogame",
+            )
+            .await?,
             Path::new("exports/games_watchlist.csv"),
         ),
     };
