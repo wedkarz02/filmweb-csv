@@ -122,10 +122,11 @@ $ ./filmweb-csv --help
 Usage: filmweb-csv [OPTIONS]
 
 Options:
-      --fetch <FETCH>  Type of resource to fetch [default: movies] [possible values: movies, series, games]
-      --from <FROM>    Fetch from rated or watchlist [default: rated] [possible values: rated, watchlist]
-  -h, --help           Print help
-  -V, --version        Print version
+      --fetch <FETCH>    Type of resource to fetch [default: movies] [possible values: movies, series, games]
+      --from <FROM>      Fetch from rated or watchlist [default: rated] [possible values: rated, watchlist]
+  -o, --output <OUTPUT>  Specify the output directory [default: ./exports/]
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 Full list of options:
@@ -149,6 +150,16 @@ $ ./filmweb-csv --fetch games --from rated
 # Get watchlisted video games:
 $ ./filmweb-csv --fetch games --from watchlist
 ```
+
+Optionally you can include an ```--output``` or ```-o``` option to specify the output directory:
+
+```bash
+# Save the output to "./data/movies_rated.csv":
+$ ./filmweb-csv --fetch movies --from rated --output data
+$ ./filmweb-csv --fetch movies --from rated -o data
+```
+
+The output path defaults to ```exports``` if not provided.
 
 ## License
 
