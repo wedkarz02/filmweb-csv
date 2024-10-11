@@ -120,31 +120,31 @@ async fn main() -> anyhow::Result<()> {
 
     println!("[INFO]: Fetching from the API...");
 
-    let (items, file_path) = match (&config.fetch_type, &config.fetch_from) {
+    let (items, file_name) = match (&config.fetch_type, &config.fetch_from) {
         (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
             get_items::<api::RatingRaw>(&config, "logged/vote/title/film")
                 .await?,
-            Path::new("exports/movies_rated.csv"),
+            "movies_rated.csv",
         ),
         (cli::FetchType::Movies, cli::FetchFrom::Watchlist) => (
             get_items::<api::WatchlistRaw>(&config, "logged/want2see/film")
                 .await?,
-            Path::new("exports/movies_watchlist.csv"),
+            "movies_watchlist.csv",
         ),
         (cli::FetchType::Series, cli::FetchFrom::Rated) => (
             get_items::<api::RatingRaw>(&config, "logged/vote/title/serial")
                 .await?,
-            Path::new("exports/series_rated.csv"),
+            "series_rated.csv",
         ),
         (cli::FetchType::Series, cli::FetchFrom::Watchlist) => (
             get_items::<api::WatchlistRaw>(&config, "logged/want2see/serial")
                 .await?,
-            Path::new("exports/series_watchlist.csv"),
+            "series_watchlist.csv",
         ),
         (cli::FetchType::Games, cli::FetchFrom::Rated) => (
             get_items::<api::RatingRaw>(&config, "logged/vote/title/videogame")
                 .await?,
-            Path::new("exports/games_rated.csv"),
+            "games_rated.csv",
         ),
         (cli::FetchType::Games, cli::FetchFrom::Watchlist) => (
             get_items::<api::WatchlistRaw>(
@@ -152,11 +152,14 @@ async fn main() -> anyhow::Result<()> {
                 "logged/want2see/videogame",
             )
             .await?,
-            Path::new("exports/games_watchlist.csv"),
+            "games_watchlist.csv",
         ),
     };
 
-    item_to_csv(file_path, &items)?;
+    let mut file_path = args.output;
+    file_path.push(file_name);
+
+    item_to_csv(&file_path, &items)?;
     println!("[INFO]: Data saved to: {:?}", path::absolute(file_path)?);
 
     let elapsed = Instant::now().duration_since(start);

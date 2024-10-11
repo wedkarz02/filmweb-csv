@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, ValueEnum};
 
 #[derive(Debug, ValueEnum, Clone)]
@@ -23,4 +25,8 @@ pub struct Args {
     /// Fetch from rated or watchlist
     #[arg(value_enum, long, default_value_t = FetchFrom::Rated)]
     pub from: FetchFrom,
+
+    /// Specify the output directory
+    #[arg(short, long, default_value = "./exports/")]
+    pub output: PathBuf,
 }
