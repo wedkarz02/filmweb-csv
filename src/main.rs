@@ -118,36 +118,33 @@ async fn run_with_config(
 ) -> anyhow::Result<(Vec<ItemData>, &str)> {
     Ok(match (&config.fetch_type, &config.fetch_from) {
         (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(&config, "logged/vote/title/film")
+            get_items::<api::RatingRaw>(config, "logged/vote/title/film")
                 .await?,
             "movies_rated.csv",
         ),
         (cli::FetchType::Movies, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(&config, "logged/want2see/film")
+            get_items::<api::WatchlistRaw>(config, "logged/want2see/film")
                 .await?,
             "movies_watchlist.csv",
         ),
         (cli::FetchType::Series, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(&config, "logged/vote/title/serial")
+            get_items::<api::RatingRaw>(config, "logged/vote/title/serial")
                 .await?,
             "series_rated.csv",
         ),
         (cli::FetchType::Series, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(&config, "logged/want2see/serial")
+            get_items::<api::WatchlistRaw>(config, "logged/want2see/serial")
                 .await?,
             "series_watchlist.csv",
         ),
         (cli::FetchType::Games, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(&config, "logged/vote/title/videogame")
+            get_items::<api::RatingRaw>(config, "logged/vote/title/videogame")
                 .await?,
             "games_rated.csv",
         ),
         (cli::FetchType::Games, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(
-                &config,
-                "logged/want2see/videogame",
-            )
-            .await?,
+            get_items::<api::WatchlistRaw>(config, "logged/want2see/videogame")
+                .await?,
             "games_watchlist.csv",
         ),
     })
@@ -166,7 +163,7 @@ async fn main() -> anyhow::Result<()> {
     Logger::with(log_level)
         .log_to_file(FileSpec::default().directory("logs").basename(format!(
             "filmweb-csv_{}",
-            Local::now().format("%Y-%m-%d").to_string()
+            Local::now().format("%Y-%m-%d")
         )))
         .duplicate_to_stdout(flexi_logger::Duplicate::All)
         .rotate(
