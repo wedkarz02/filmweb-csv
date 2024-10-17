@@ -22,3 +22,6 @@ asdf.txt
 # Exported CSV files
 exports/
 *.csv
+
+# Logs
+logs/

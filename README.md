@@ -25,6 +25,7 @@ Personally, I use it to generate histograms and analyze the statistical distribu
     * [Setting up the enviroment](#setting-up-the-enviroment)
     * [Building](#building)
 * [Usage](#usage)
+    * [Options](#options)
 * [License](#license)
 
 ## Requirements
@@ -125,9 +126,12 @@ Options:
       --fetch <FETCH>    Type of resource to fetch [default: movies] [possible values: movies, series, games]
       --from <FROM>      Fetch from rated or watchlist [default: rated] [possible values: rated, watchlist]
   -o, --output <OUTPUT>  Specify the output directory [default: ./exports/]
+  -v, --verbose          Log more details to stdout
   -h, --help             Print help
   -V, --version          Print version
 ```
+
+### Options
 
 Full list of options:
 
@@ -160,6 +164,15 @@ $ ./filmweb-csv --fetch movies --from rated -o data
 ```
 
 The output path defaults to ```exports``` if not provided.
+
+To enable info logging use the ```--verbose``` or ```-v``` flag:
+
+```bash
+# Enable verbose logging to stdout:
+$ ./filmweb-csv --fetch movies --from rated --verbose
+```
+
+Logging to stdout is disabled by default (except for error logs) but logging to a file is always on. To see those logs navigate to ```logs``` directory.
 
 ## License
 

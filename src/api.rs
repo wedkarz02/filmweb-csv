@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use log::info;
 use reqwest::Client;
 use reqwest::{Response, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -130,6 +131,7 @@ pub async fn fetch_resource(
     endpoint: &str,
 ) -> Result<String, ApiError> {
     let url = format!("{}/{}", BASE_URL, endpoint);
+    info!("Fetching from: {}", url);
 
     let response = client
         .get(url.clone())

@@ -3,15 +3,18 @@ use std::{
     fmt::Debug,
     fs::{create_dir_all, File},
     path::{self, Path},
+    process,
 };
 
-use anyhow::Context;
 use api::ItemData;
+use chrono::Local;
 use clap::Parser;
 use cli::{FetchFrom, FetchType};
 use csv::WriterBuilder;
+use flexi_logger::{Criterion, FileSpec, Logger};
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
+use log::{error, info, LevelFilter};
 use reqwest::Client;
 use tokio::time::Instant;
 
@@ -39,6 +42,21 @@ impl Debug for Config {
             .field("progress_bar", &self.progress_bar)
             .finish()
     }
+}
+
+fn log_fmt(
+    write: &mut dyn std::io::Write,
+    now: &mut flexi_logger::DeferredNow,
+    record: &log::Record,
+) -> std::io::Result<()> {
+    write!(
+        write,
+        "[{}] {} [{}]: {}",
+        record.level(),
+        now.format("%Y-%m-%d %H:%M:%S"),
+        record.target(),
+        record.args()
+    )
 }
 
 fn item_to_csv(
@@ -92,35 +110,13 @@ where
 {
     let items: Vec<T> = api::fetch_pages(config, endpoint).await?;
     config.progress_bar.set_length(items.len() as u64);
-
     execute_futures(config, &items).await
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let start = Instant::now();
-    dotenvy::dotenv().context(".env file not found")?;
-
-    let args = cli::Args::parse();
-
-    let cookie_header =
-        env::var("COOKIE_HEADER").expect("COOKIE_HEADER should be set");
-
-    let pb = ProgressBar::new(0);
-    pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")?
-        .progress_chars("#>-"));
-
-    let config = Config {
-        fetch_type: args.fetch,
-        fetch_from: args.from,
-        cookie_header,
-        progress_bar: pb,
-    };
-
-    println!("[INFO]: Fetching from the API...");
-
-    let (items, file_name) = match (&config.fetch_type, &config.fetch_from) {
+async fn run_with_config(
+    config: &Config,
+) -> anyhow::Result<(Vec<ItemData>, &str)> {
+    Ok(match (&config.fetch_type, &config.fetch_from) {
         (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
             get_items::<api::RatingRaw>(&config, "logged/vote/title/film")
                 .await?,
@@ -154,16 +150,78 @@ async fn main() -> anyhow::Result<()> {
             .await?,
             "games_watchlist.csv",
         ),
+    })
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let start = Instant::now();
+    let args = cli::Args::parse();
+
+    let log_level = match args.verbose {
+        true => LevelFilter::Info,
+        false => LevelFilter::Error,
+    };
+
+    Logger::with(log_level)
+        .log_to_file(FileSpec::default().directory("logs").basename(format!(
+            "filmweb-csv_{}",
+            Local::now().format("%Y-%m-%d").to_string()
+        )))
+        .duplicate_to_stdout(flexi_logger::Duplicate::All)
+        .rotate(
+            Criterion::Size(1024 * 1024),
+            flexi_logger::Naming::Numbers,
+            flexi_logger::Cleanup::KeepLogFiles(5),
+        )
+        .write_mode(flexi_logger::WriteMode::Direct)
+        .format(log_fmt)
+        .start()?;
+
+    if let Err(e) = dotenvy::dotenv() {
+        error!("Failed to load '.env' file ({})", e);
+        process::exit(1);
+    }
+
+    let cookie_header = match env::var("COOKIE_HEADER") {
+        Ok(val) => val,
+        Err(e) => {
+            error!("Failed to load COOKIE_HEADER ({})", e);
+            process::exit(1);
+        }
+    };
+
+    let progress_bar = ProgressBar::new(0);
+    progress_bar.set_style(ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")?
+        .progress_chars("#>-"));
+
+    let config = Config {
+        fetch_type: args.fetch,
+        fetch_from: args.from,
+        cookie_header,
+        progress_bar,
+    };
+
+    let (items, file_name) = match run_with_config(&config).await {
+        Ok(res) => res,
+        Err(e) => {
+            error!("{}", e);
+            process::exit(1);
+        }
     };
 
     let mut file_path = args.output;
     file_path.push(file_name);
 
-    item_to_csv(&file_path, &items)?;
-    println!("[INFO]: Data saved to: {:?}", path::absolute(file_path)?);
+    if let Err(e) = item_to_csv(&file_path, &items) {
+        error!("{}", e);
+        process::exit(1);
+    }
 
+    info!("Data saved to: {:?}", path::absolute(file_path)?);
     let elapsed = Instant::now().duration_since(start);
-    println!("[INFO]: Total time elapsed: {:.4?}", elapsed);
+    info!("Total time elapsed: {:.4?}", elapsed);
 
     Ok(())
 }

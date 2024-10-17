@@ -29,4 +29,8 @@ pub struct Args {
     /// Specify the output directory
     #[arg(short, long, default_value = "./exports/")]
     pub output: PathBuf,
+
+    /// Log more details to stdout
+    #[arg(short, long, action)]
+    pub verbose: bool,
 }
