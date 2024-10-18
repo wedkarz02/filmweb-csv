@@ -11,17 +11,17 @@ pub enum ApiError {
 
 #[derive(Debug)]
 pub enum AppError {
-    ApiError(ApiError),
-    ReqwestError(reqwest::Error),
-    SerdeJsonError(serde_json::Error),
+    Api(ApiError),
+    Reqwest(reqwest::Error),
+    SerdeJson(serde_json::Error),
 }
 
 impl Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ApiError(err) => write!(f, "{}", err),
-            Self::ReqwestError(err) => write!(f, "reqwest error: {}", err),
-            Self::SerdeJsonError(err) => write!(f, "serde_json error: {}", err),
+            Self::Api(err) => write!(f, "{}", err),
+            Self::Reqwest(err) => write!(f, "reqwest error: {}", err),
+            Self::SerdeJson(err) => write!(f, "serde_json error: {}", err),
         }
     }
 }
@@ -45,8 +45,8 @@ impl Error for ApiError {}
 impl Error for AppError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            AppError::ReqwestError(ref err) => Some(err),
-            AppError::SerdeJsonError(ref err) => Some(err),
+            AppError::Reqwest(ref err) => Some(err),
+            AppError::SerdeJson(ref err) => Some(err),
             _ => None,
         }
     }
@@ -54,18 +54,18 @@ impl Error for AppError {
 
 impl From<ApiError> for AppError {
     fn from(value: ApiError) -> Self {
-        AppError::ApiError(value)
+        AppError::Api(value)
     }
 }
 
 impl From<reqwest::Error> for AppError {
     fn from(value: reqwest::Error) -> Self {
-        AppError::ReqwestError(value)
+        AppError::Reqwest(value)
     }
 }
 
 impl From<serde_json::Error> for AppError {
     fn from(value: serde_json::Error) -> Self {
-        AppError::SerdeJsonError(value)
+        AppError::SerdeJson(value)
     }
 }
