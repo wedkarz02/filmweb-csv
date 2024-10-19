@@ -9,9 +9,9 @@ use std::{
 use api::ItemData;
 use chrono::Local;
 use clap::Parser;
-use cli::{FetchFrom, FetchType};
+use cli::{Args, FetchFrom, FetchType};
 use csv::WriterBuilder;
-use flexi_logger::{Criterion, FileSpec, Logger};
+use flexi_logger::{Criterion, Duplicate, FileSpec, Logger};
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{error, info, LevelFilter};
@@ -57,6 +57,27 @@ fn log_fmt(
         record.target(),
         record.args()
     )
+}
+
+fn setup_logger(args: &Args) -> Logger {
+    let stdout_level = match args.verbose {
+        true => Duplicate::All,
+        false => Duplicate::Error,
+    };
+
+    Logger::with(LevelFilter::Info)
+        .log_to_file(FileSpec::default().directory("logs").basename(format!(
+            "filmweb-csv_{}",
+            Local::now().format("%Y-%m-%d")
+        )))
+        .duplicate_to_stdout(stdout_level)
+        .rotate(
+            Criterion::Size(1024 * 1024),
+            flexi_logger::Naming::Numbers,
+            flexi_logger::Cleanup::KeepLogFiles(5),
+        )
+        .write_mode(flexi_logger::WriteMode::Direct)
+        .format(log_fmt)
 }
 
 fn item_to_csv(
@@ -154,26 +175,7 @@ async fn run_with_config(
 async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     let args = cli::Args::parse();
-
-    let log_level = match args.verbose {
-        true => LevelFilter::Info,
-        false => LevelFilter::Error,
-    };
-
-    Logger::with(log_level)
-        .log_to_file(FileSpec::default().directory("logs").basename(format!(
-            "filmweb-csv_{}",
-            Local::now().format("%Y-%m-%d")
-        )))
-        .duplicate_to_stdout(flexi_logger::Duplicate::All)
-        .rotate(
-            Criterion::Size(1024 * 1024),
-            flexi_logger::Naming::Numbers,
-            flexi_logger::Cleanup::KeepLogFiles(5),
-        )
-        .write_mode(flexi_logger::WriteMode::Direct)
-        .format(log_fmt)
-        .start()?;
+    setup_logger(&args).start()?;
 
     if let Err(e) = dotenvy::dotenv() {
         error!("Failed to load '.env' file ({})", e);
