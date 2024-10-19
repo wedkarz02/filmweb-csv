@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::util::ToDate;
 use crate::Config;
-use crate::{error::ApiError, BASE_URL};
+use crate::{error::ApiError, error::AppError, BASE_URL};
 
 pub trait RawEntity {
     fn entity(&self) -> u64;
@@ -81,16 +81,18 @@ pub struct ItemData {
     pub rate: u8,
 }
 
-pub async fn get_body(response: Response) -> Result<String, ApiError> {
+pub async fn get_body(response: Response) -> Result<String, AppError> {
     match response.status() {
         StatusCode::OK => Ok(response.text().await?),
-        StatusCode::BAD_REQUEST => Err(ApiError::BadRequest),
-        StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized),
-        StatusCode::NOT_FOUND => {
-            Err(ApiError::NotFound(response.url().to_string()))
+        StatusCode::BAD_REQUEST => Err(AppError::from(ApiError::BadRequest)),
+        StatusCode::UNAUTHORIZED => Err(AppError::from(ApiError::Unauthorized)),
+        StatusCode::NOT_FOUND => Err(AppError::from(ApiError::NotFound(
+            response.url().to_string(),
+        ))),
+        StatusCode::INTERNAL_SERVER_ERROR => {
+            Err(AppError::from(ApiError::InternalServerError))
         }
-        StatusCode::INTERNAL_SERVER_ERROR => Err(ApiError::InternalServerError),
-        _ => Err(ApiError::Unrecognized),
+        _ => Err(AppError::from(ApiError::Unrecognized)),
     }
 }
 
@@ -98,7 +100,7 @@ async fn fetch_general_info(
     config: &Config,
     client: &Client,
     entity: u64,
-) -> Result<GeneralInfo, ApiError> {
+) -> Result<GeneralInfo, AppError> {
     let endpoint = format!("title/{}/info", entity);
     let body = fetch_resource(config, client, &endpoint).await?;
     let general_info: GeneralInfo = serde_json::from_str(&body)?;
@@ -109,7 +111,7 @@ pub async fn raw_to_item<T>(
     config: &Config,
     client: &Client,
     raw: &T,
-) -> Result<ItemData, ApiError>
+) -> Result<ItemData, AppError>
 where
     T: RawEntity,
 {
@@ -129,7 +131,7 @@ pub async fn fetch_resource(
     config: &Config,
     client: &Client,
     endpoint: &str,
-) -> Result<String, ApiError> {
+) -> Result<String, AppError> {
     let url = format!("{}/{}", BASE_URL, endpoint);
     info!("Fetching from: {}", url);
 
@@ -146,7 +148,7 @@ pub async fn fetch_resource(
 pub async fn fetch_pages<T>(
     config: &Config,
     endpoint: &str,
-) -> Result<Vec<T>, ApiError>
+) -> Result<Vec<T>, AppError>
 where
     T: serde::de::DeserializeOwned,
 {
