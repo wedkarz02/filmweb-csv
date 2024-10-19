@@ -1,4 +1,13 @@
-<h1 align="center">filmweb-csv</h1>
+<!-- <h1 align="center">filmweb-csv</h1> -->
+
+<div align="center">
+    <h1>
+        <code> filmweb-csv </code>
+    </h1>
+    <p>
+        <strong>🚀 Effortless Filmweb data ➔ CSV fetching 🚀</strong>
+    </p>
+</div>
 
 [![Rust CI](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml)
 ![GitHub License](https://img.shields.io/github/license/wedkarz02/filmweb-csv)
