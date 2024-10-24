@@ -44,6 +44,19 @@ impl Debug for Config {
     }
 }
 
+trait LogAndExitOnErr<T> {
+    fn log_and_exit_on_err(self, msg: &str) -> anyhow::Result<T>;
+}
+
+impl<T, E: std::fmt::Display> LogAndExitOnErr<T> for Result<T, E> {
+    fn log_and_exit_on_err(self, msg: &str) -> anyhow::Result<T> {
+        self.map_err(|e| {
+            error!("{}: {}", msg, e);
+            process::exit(1);
+        })
+    }
+}
+
 fn log_fmt(
     write: &mut dyn std::io::Write,
     now: &mut flexi_logger::DeferredNow,
@@ -136,39 +149,40 @@ where
 
 async fn run_with_config(
     config: &Config,
-) -> anyhow::Result<(Vec<ItemData>, &str)> {
-    Ok(match (&config.fetch_type, &config.fetch_from) {
-        (cli::FetchType::Movies, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(config, "logged/vote/title/film")
-                .await?,
-            "movies_rated.csv",
-        ),
-        (cli::FetchType::Movies, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(config, "logged/want2see/film")
-                .await?,
-            "movies_watchlist.csv",
-        ),
-        (cli::FetchType::Series, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(config, "logged/vote/title/serial")
-                .await?,
-            "series_rated.csv",
-        ),
-        (cli::FetchType::Series, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(config, "logged/want2see/serial")
-                .await?,
-            "series_watchlist.csv",
-        ),
-        (cli::FetchType::Games, cli::FetchFrom::Rated) => (
-            get_items::<api::RatingRaw>(config, "logged/vote/title/videogame")
-                .await?,
-            "games_rated.csv",
-        ),
-        (cli::FetchType::Games, cli::FetchFrom::Watchlist) => (
-            get_items::<api::WatchlistRaw>(config, "logged/want2see/videogame")
-                .await?,
-            "games_watchlist.csv",
-        ),
-    })
+) -> anyhow::Result<(Vec<ItemData>, String)> {
+    let (endpoint_suffix, file_name) = match config.fetch_type {
+        cli::FetchType::Movies => ("film", "movies"),
+        cli::FetchType::Series => ("serial", "series"),
+        cli::FetchType::Games => ("videogame", "games"),
+    };
+
+    let items = match config.fetch_from {
+        cli::FetchFrom::Rated => {
+            get_items::<api::RatingRaw>(
+                config,
+                &format!("logged/vote/title/{}", endpoint_suffix),
+            )
+            .await?
+        }
+        cli::FetchFrom::Watchlist => {
+            get_items::<api::WatchlistRaw>(
+                config,
+                &format!("logged/want2see/{}", endpoint_suffix),
+            )
+            .await?
+        }
+    };
+
+    let output_file = format!(
+        "{}_{}.csv",
+        file_name,
+        match config.fetch_from {
+            cli::FetchFrom::Rated => "rated",
+            cli::FetchFrom::Watchlist => "watchlist",
+        }
+    );
+
+    Ok((items, output_file))
 }
 
 #[tokio::main]
@@ -176,19 +190,10 @@ async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     let args = cli::Args::parse();
     setup_logger(&args).start()?;
+    dotenvy::dotenv().log_and_exit_on_err("Failed to load '.env' file")?;
 
-    if let Err(e) = dotenvy::dotenv() {
-        error!("Failed to load '.env' file ({})", e);
-        process::exit(1);
-    }
-
-    let cookie_header = match env::var("COOKIE_HEADER") {
-        Ok(val) => val,
-        Err(e) => {
-            error!("Failed to load COOKIE_HEADER ({})", e);
-            process::exit(1);
-        }
-    };
+    let cookie_header = env::var("COOKIE_HEADER")
+        .log_and_exit_on_err("Failed to load COOKIE_HEADER")?;
 
     let progress_bar = ProgressBar::new(0);
     progress_bar.set_style(ProgressStyle::default_bar()
@@ -202,21 +207,15 @@ async fn main() -> anyhow::Result<()> {
         progress_bar,
     };
 
-    let (items, file_name) = match run_with_config(&config).await {
-        Ok(res) => res,
-        Err(e) => {
-            error!("{}", e);
-            process::exit(1);
-        }
-    };
+    let (items, file_name) = run_with_config(&config)
+        .await
+        .log_and_exit_on_err("Resource fetching failed")?;
 
     let mut file_path = args.output;
     file_path.push(file_name);
 
-    if let Err(e) = item_to_csv(&file_path, &items) {
-        error!("{}", e);
-        process::exit(1);
-    }
+    item_to_csv(&file_path, &items)
+        .log_and_exit_on_err("Saving to file failed")?;
 
     info!("Data saved to: {:?}", path::absolute(file_path)?);
     let elapsed = Instant::now().duration_since(start);
