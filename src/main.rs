@@ -1,16 +1,15 @@
 use std::{
-    env,
     fmt::Debug,
-    fs::{create_dir_all, File},
+    fs::{self, create_dir_all, File},
     path::{self, Path},
     process,
 };
 
 use api::ItemData;
-use chrono::Local;
 use clap::Parser;
 use cli::{Args, FetchFrom, FetchType};
 use csv::WriterBuilder;
+use error::AppError;
 use flexi_logger::{Criterion, Duplicate, FileSpec, Logger};
 use futures::future::try_join_all;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -79,14 +78,11 @@ fn setup_logger(args: &Args) -> Logger {
     };
 
     Logger::with(LevelFilter::Info)
-        .log_to_file(FileSpec::default().directory("logs").basename(format!(
-            "filmweb-csv_{}",
-            Local::now().format("%Y-%m-%d")
-        )))
+        .log_to_file(FileSpec::default().directory("logs"))
         .duplicate_to_stdout(stdout_level)
         .rotate(
             Criterion::Size(1024 * 1024),
-            flexi_logger::Naming::Numbers,
+            flexi_logger::Naming::Timestamps,
             flexi_logger::Cleanup::KeepLogFiles(5),
         )
         .write_mode(flexi_logger::WriteMode::Direct)
@@ -119,7 +115,6 @@ async fn execute_futures<T>(
 where
     T: api::RawEntity,
 {
-    config.progress_bar.inc(0);
     let movies = try_join_all(raw_items.iter().map(|raw| {
         let pb = config.progress_bar.clone();
         let cfg = config.clone();
@@ -185,15 +180,44 @@ async fn run_with_config(
     Ok((items, output_file))
 }
 
+fn read_cookie(args: &Args) -> anyhow::Result<String> {
+    if let Some(cookie) = &args.cookie {
+        return Ok(cookie.clone());
+    }
+
+    let home_dir = dirs::home_dir()
+        .ok_or(AppError::WithContext("Home directory not found".into()))?;
+    let cookie_path = home_dir.join(".filmweb-csv");
+
+    Ok(fs::read_to_string(cookie_path).map(|s| s.trim().to_string())?)
+}
+
+fn save_cookie(cookie: &str) -> anyhow::Result<()> {
+    let home_dir = dirs::home_dir()
+        .ok_or(AppError::WithContext("Home directory not found".into()))?;
+    let cookie_path = home_dir.join(".filmweb-csv");
+
+    fs::write(&cookie_path, cookie)?;
+    info!("Tokens written to: {:?}", path::absolute(cookie_path)?);
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     let args = cli::Args::parse();
-    setup_logger(&args).start()?;
-    dotenvy::dotenv().log_and_exit_on_err("Failed to load '.env' file")?;
 
-    let cookie_header = env::var("COOKIE_HEADER")
-        .log_and_exit_on_err("Failed to load COOKIE_HEADER")?;
+    setup_logger(&args).start()?;
+    info!("Logger initialized");
+
+    let cookie_header = read_cookie(&args)
+        .log_and_exit_on_err("Failed to read cookie header")?;
+
+    if args.save_cookie {
+        save_cookie(&cookie_header)
+            .log_and_exit_on_err("Failed to save cookie header")?;
+    }
 
     let progress_bar = ProgressBar::new(0);
     progress_bar.set_style(ProgressStyle::default_bar()
@@ -217,7 +241,7 @@ async fn main() -> anyhow::Result<()> {
     item_to_csv(&file_path, &items)
         .log_and_exit_on_err("Saving to file failed")?;
 
-    info!("Data saved to: {:?}", path::absolute(file_path)?);
+    info!("Data written to: {:?}", path::absolute(file_path)?);
     let elapsed = Instant::now().duration_since(start);
     info!("Total time elapsed: {:.4?}", elapsed);
 

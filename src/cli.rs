@@ -33,4 +33,12 @@ pub struct Args {
     /// Log more details to stdout
     #[arg(short, long, action)]
     pub verbose: bool,
+
+    /// Cookie header for authentication
+    #[arg(long)]
+    pub cookie: Option<String>,
+
+    /// Save the cookie header to ~/.filmweb-csv
+    #[arg(long, action)]
+    pub save_cookie: bool,
 }

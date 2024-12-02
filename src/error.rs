@@ -14,6 +14,7 @@ pub enum AppError {
     Api(ApiError),
     Reqwest(reqwest::Error),
     SerdeJson(serde_json::Error),
+    WithContext(String),
 }
 
 impl Display for AppError {
@@ -22,6 +23,7 @@ impl Display for AppError {
             Self::Api(err) => write!(f, "{}", err),
             Self::Reqwest(err) => write!(f, "reqwest error: {}", err),
             Self::SerdeJson(err) => write!(f, "serde_json error: {}", err),
+            Self::WithContext(err) => write!(f, "{}", err),
         }
     }
 }
@@ -31,7 +33,7 @@ impl Display for ApiError {
         match self {
             Self::NotFound(url) => write!(f, "Endpoint not found: {}", url),
             Self::Unauthorized => {
-                write!(f, "Unauthorized (missing cookie header)")
+                write!(f, "Unauthorized (missing or invalid tokens)")
             }
             Self::BadRequest => write!(f, "Invalid or expired tokens"),
             Self::InternalServerError => write!(f, "Internal server error"),
@@ -47,6 +49,7 @@ impl Error for AppError {
         match self {
             AppError::Reqwest(ref err) => Some(err),
             AppError::SerdeJson(ref err) => Some(err),
+            AppError::Api(ref err) => Some(err),
             _ => None,
         }
     }

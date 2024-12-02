@@ -84,15 +84,15 @@ pub struct ItemData {
 pub async fn get_body(response: Response) -> Result<String, AppError> {
     match response.status() {
         StatusCode::OK => Ok(response.text().await?),
-        StatusCode::BAD_REQUEST => Err(AppError::from(ApiError::BadRequest)),
-        StatusCode::UNAUTHORIZED => Err(AppError::from(ApiError::Unauthorized)),
-        StatusCode::NOT_FOUND => Err(AppError::from(ApiError::NotFound(
-            response.url().to_string(),
-        ))),
-        StatusCode::INTERNAL_SERVER_ERROR => {
-            Err(AppError::from(ApiError::InternalServerError))
+        StatusCode::BAD_REQUEST => Err(ApiError::BadRequest.into()),
+        StatusCode::UNAUTHORIZED => Err(ApiError::Unauthorized.into()),
+        StatusCode::NOT_FOUND => {
+            Err(ApiError::NotFound(response.url().to_string()).into())
         }
-        _ => Err(AppError::from(ApiError::Unrecognized)),
+        StatusCode::INTERNAL_SERVER_ERROR => {
+            Err(ApiError::InternalServerError.into())
+        }
+        _ => Err(ApiError::Unrecognized.into()),
     }
 }
 
