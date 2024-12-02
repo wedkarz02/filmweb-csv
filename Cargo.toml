@@ -1,9 +1,15 @@
 [package]
 name = "filmweb-csv"
-version = "0.1.0"
+version = "0.2.9"
 edition = "2021"
 description = "Effortless Filmweb data -> CSV fetching."
 authors = ["wedkarz02"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/wedkarz02/filmweb-csv"
+keywords = ["cli"]
+categories = ["command-line-utilities"]
+exclude = ["/.github/*"]
 
 [dependencies]
 anyhow = "1.0.90"

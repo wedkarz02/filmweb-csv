@@ -10,6 +10,7 @@
 </div>
 
 [![Rust CI](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/wedkarz02/filmweb-csv/actions/workflows/rust-ci.yml)
+![GitHub Release](https://img.shields.io/github/v/release/wedkarz02/filmweb-csv)
 ![GitHub License](https://img.shields.io/github/license/wedkarz02/filmweb-csv)
 
 ## Overview
@@ -28,12 +29,14 @@ Personally, I use it to generate histograms and analyze the statistical distribu
 ## Table of Contents
 
 * [Requirements](#requirements)
+* [Install](#install)
 * [Download](#download)
+* [Building](#building)
 * [Getting Started](#getting-started)
+    * [Security Considerations](#security-considerations)
     * [Getting the Cookie header](#getting-the-cookie-header)
-    * [Setting up the enviroment](#setting-up-the-enviroment)
-    * [Building](#building)
 * [Usage](#usage)
+    * [Auth](#auth)
     * [Options](#options)
 * [License](#license)
 
@@ -45,6 +48,16 @@ Personally, I use it to generate histograms and analyze the statistical distribu
 
 This project was developed on the Ubuntu 20.04.6 operating system and will likely work on most Linux-based systems without issues. It should also work on Windows, but I haven't tested it. If you encounter any problems, feel free to open a Github Issue.
 
+## Install
+
+You can install the application by building it from source or by downloading it from [crates.io](https://crates.io/crates/filmweb-csv). For the latter, use ```cargo```:
+```bash
+$ cargo install filmweb-csv
+```
+
+After installing from [crates.io](https://crates.io/crates/filmweb-csv) you can skip to the [Getting Started](#getting-started) section.\
+If you'd like to build from source - keep reading.
+
 ## Download
 
 Download the source code using the ```git clone``` command:
@@ -55,40 +68,7 @@ $ git clone https://github.com/wedkarz02/filmweb-csv.git
 
 Or use the *Download ZIP* option from the Github repository [page](https://github.com/wedkarz02/filmweb-csv.git).
 
-## Getting Started
-
-### Getting the Cookie header
-
-This app requires you to authenticate via an API that unfortunately doesn't have a documented login process. To work around this, you need to get the 'Cookie' header, which is generated when you log into Filmweb.
-
-**Security Considerations**:
-- **Cookies contain sensitive session information**, which could be used to impersonate you or access your account.
-- You should **never** provide your cookies to unknown parties.
-
-How to get the Cookie header:
-1. Open your browser and log into [Filmweb](https://www.filmweb.pl/).
-2. In a new tab, navigate to [https://www.filmweb.pl/api/v1/logged/info](https://www.filmweb.pl/api/v1/logged/info), you should see your profile details on the page.
-3. Open the DevTools by pressing ```F12```, ```Ctrl+Shift+I``` or other shortcut depending on your browser.
-4. Navigate to ```Network``` tab and refresh the page.
-5. Select the row with ```info``` as the Name.
-6. Make sure you are in ```Headers``` tab and scroll down to the ```Request Headers``` section.
-7. Find the ```Cookie``` parameter and copy it's value (without the *Cookie:* part, just the value). It will likely be very long, make sure it's all there.
-
-I haven't found an easier way of authenticating. I will automate this process if they decide to release the API officially in the future.
-
-### Setting up the enviroment
-
-You need to create a  ```.env``` file in the root directory (The app will exit with an error message informing you about it if you don't). There's only one variable you should set: ```COOKIE_HEADER``` - it's the value you got in the previous step. It will likely be very long, make sure it's all there.
-
-The ```.env``` file should look like this:
-
-```
-COOKIE_HEADER="actual-value"
-```
-
-Please note that the value is inside of quotation marks. This is necessary.
-
-### Building
+## Building
 
 Build the application using ```cargo``` in debug mode:
 
@@ -107,10 +87,31 @@ It's up to you whether to build in debug or release mode. It doesn't really matt
 The binary is self-contained so you can easily copy / move / symlink it from the ```target/``` directory:
 
 ```bash
-$ cp ./target/debug/filmweb-csv ./filmweb-csv
-$ mv ./target/debug/filmweb-csv ./filmweb-csv
-$ ln ./target/debug/filmweb-csv ./filmweb-csv
+$ cp ./target/release/filmweb-csv ~/.local/bin
+$ mv ./target/release/filmweb-csv ~/.local/bin
+$ ln ./target/release/filmweb-csv ~/.local/bin
 ```
+
+## Getting Started
+
+### **Security Considerations**:
+- **Cookies contain sensitive session information**, which could be used to impersonate you or access your account.
+- You should **never** provide your cookies to unknown parties.
+
+### Getting the Cookie header
+
+This app requires you to authenticate via an API that unfortunately doesn't have a documented login process. To work around this, you need to get the 'Cookie' header, which is generated when you log into Filmweb.
+
+How to get the Cookie header:
+1. Open your browser and log into [Filmweb](https://www.filmweb.pl/).
+2. In a new tab, navigate to [https://www.filmweb.pl/api/v1/logged/info](https://www.filmweb.pl/api/v1/logged/info), you should see your profile details on the page.
+3. Open the DevTools by pressing ```F12```, ```Ctrl+Shift+I``` or other shortcut depending on your browser.
+4. Navigate to ```Network``` tab and refresh the page.
+5. Select the row with ```info``` as the Name.
+6. Make sure you are in ```Headers``` tab and scroll down to the ```Request Headers``` section.
+7. Find the ```Cookie``` parameter and copy it's value (without the *Cookie:* part, just the value). It will likely be very long, make sure it's all there.
+
+I haven't found an easier way of authenticating. I will automate this process if they decide to release the API officially in the future.
 
 ## Usage
 
@@ -118,7 +119,7 @@ To run the application use ```cargo``` or run the compiled executable directly:
 
 ```bash
 $ cargo run -- [OPTIONS]
-$ ./filmweb-csv [OPTIONS]
+$ filmweb-csv [OPTIONS]
 ```
 
 The app defaults to fetching rated movies if no options were given.
@@ -126,7 +127,7 @@ The app defaults to fetching rated movies if no options were given.
 This is a full copy of a help message, which you can also get by using the ```--help``` option:
 
 ```
-$ ./filmweb-csv --help
+$ filmweb-csv --help
 
 
 Usage: filmweb-csv [OPTIONS]
@@ -136,40 +137,60 @@ Options:
       --from <FROM>      Fetch from rated or watchlist [default: rated] [possible values: rated, watchlist]
   -o, --output <OUTPUT>  Specify the output directory [default: ./exports/]
   -v, --verbose          Log more details to stdout
+      --cookie <COOKIE>  Cookie header for authentication
+      --save-cookie      Save the cookie header to ~/.filmweb-csv
   -h, --help             Print help
   -V, --version          Print version
 ```
 
+### Auth
+
+To authenticate the application client use the ```--cookie``` option and paste the cookie header in single quotes:
+
+```bash
+$ filmweb-csv [OPTIONS] --cookie '<HEADER VALUE>'
+```
+
+Single quotes are important because tokens might contain special characters like double quotes, semicolons and spaces.
+
+Optionally you can use the ```--save-cookie``` flag to cache the tokens. That way you won't have to include the ```--cookie``` every time:
+
+```bash
+$ filmweb-csv [OPTIONS] --cookie '<HEADER VALUE>' --save-cookie
+```
+
+Tokens are saved to ```~/.filmweb-csv``` in plaintext and are valid for about 15 minutes.
+
 ### Options
 
-Full list of options:
+Full list of options (assuming ```~/.filmweb-csv``` has valid tokens):
 
 ```bash
 # Get rated movies:
-$ ./filmweb-csv --fetch movies --from rated
+$ filmweb-csv --fetch movies --from rated
 
 # Get watchlisted movies:
-$ ./filmweb-csv --fetch movies --from watchlist
+$ filmweb-csv --fetch movies --from watchlist
 
 # Get rated series:
-$ ./filmweb-csv --fetch series --from rated
+$ filmweb-csv --fetch series --from rated
 
 # Get watchlisted series:
-$ ./filmweb-csv --fetch series --from watchlist
+$ filmweb-csv --fetch series --from watchlist
 
 # Get rated video games:
-$ ./filmweb-csv --fetch games --from rated
+$ filmweb-csv --fetch games --from rated
 
 # Get watchlisted video games:
-$ ./filmweb-csv --fetch games --from watchlist
+$ filmweb-csv --fetch games --from watchlist
 ```
 
 Optionally you can include an ```--output``` or ```-o``` option to specify the output directory:
 
 ```bash
 # Save the output to "./data/movies_rated.csv":
-$ ./filmweb-csv --fetch movies --from rated --output data
-$ ./filmweb-csv --fetch movies --from rated -o data
+$ filmweb-csv --fetch movies --from rated --output data
+$ filmweb-csv --fetch movies --from rated -o data
 ```
 
 The output path defaults to ```exports``` if not provided.
@@ -178,7 +199,7 @@ To enable info logging use the ```--verbose``` or ```-v``` flag:
 
 ```bash
 # Enable verbose logging to stdout:
-$ ./filmweb-csv --fetch movies --from rated --verbose
+$ filmweb-csv --fetch movies --from rated --verbose
 ```
 
 Logging to stdout is disabled by default (except for error logs) but logging to a file is always on. To see those logs navigate to ```logs``` directory.
