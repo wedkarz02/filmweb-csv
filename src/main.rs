@@ -1,7 +1,7 @@
 use std::{
     fmt::Debug,
     fs::{self, create_dir_all, File},
-    path::{self, Path},
+    path::{self, Path, PathBuf},
     process,
 };
 
@@ -71,14 +71,19 @@ fn log_fmt(
     )
 }
 
-fn setup_logger(args: &Args) -> Logger {
+fn setup_logger(args: &Args, home_dir: PathBuf) -> anyhow::Result<Logger> {
+    let logs_path = home_dir.join("logs");
+    if let Some(parent) = logs_path.parent() {
+        create_dir_all(parent)?;
+    }
+
     let stdout_level = match args.verbose {
         true => Duplicate::All,
         false => Duplicate::Error,
     };
 
-    Logger::with(LevelFilter::Info)
-        .log_to_file(FileSpec::default().directory("logs"))
+    Ok(Logger::with(LevelFilter::Info)
+        .log_to_file(FileSpec::default().directory(logs_path))
         .duplicate_to_stdout(stdout_level)
         .rotate(
             Criterion::Size(1024 * 1024),
@@ -86,7 +91,7 @@ fn setup_logger(args: &Args) -> Logger {
             flexi_logger::Cleanup::KeepLogFiles(5),
         )
         .write_mode(flexi_logger::WriteMode::Direct)
-        .format(log_fmt)
+        .format(log_fmt))
 }
 
 fn item_to_csv(
@@ -180,26 +185,19 @@ async fn run_with_config(
     Ok((items, output_file))
 }
 
-fn read_cookie(args: &Args) -> anyhow::Result<String> {
+fn read_cookie(args: &Args, home_dir: PathBuf) -> anyhow::Result<String> {
     if let Some(cookie) = &args.cookie {
         return Ok(cookie.clone());
     }
 
-    let home_dir = dirs::home_dir()
-        .ok_or(AppError::WithContext("Home directory not found".into()))?;
-    let cookie_path = home_dir.join(".filmweb-csv");
-
+    let cookie_path = home_dir.join("credentials.txt");
     Ok(fs::read_to_string(cookie_path).map(|s| s.trim().to_string())?)
 }
 
-fn save_cookie(cookie: &str) -> anyhow::Result<()> {
-    let home_dir = dirs::home_dir()
-        .ok_or(AppError::WithContext("Home directory not found".into()))?;
-    let cookie_path = home_dir.join(".filmweb-csv");
-
+fn save_cookie(cookie: &str, home_dir: PathBuf) -> anyhow::Result<()> {
+    let cookie_path = home_dir.join("credentials.txt");
     fs::write(&cookie_path, cookie)?;
     info!("Tokens written to: {:?}", path::absolute(cookie_path)?);
-
     Ok(())
 }
 
@@ -207,15 +205,20 @@ fn save_cookie(cookie: &str) -> anyhow::Result<()> {
 async fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     let args = cli::Args::parse();
+    let home_dir = dirs::home_dir()
+        .ok_or(AppError::WithContext("Home directory not found".into()))?
+        .join(".filmweb-csv");
 
-    setup_logger(&args).start()?;
+    setup_logger(&args, home_dir.clone())
+        .log_and_exit_on_err("Failed to setup logger")?
+        .start()?;
     info!("Logger initialized");
 
-    let cookie_header = read_cookie(&args)
-        .log_and_exit_on_err("Failed to read cookie header")?;
+    let cookie_header = read_cookie(&args, home_dir.clone())
+        .log_and_exit_on_err("Cookie header not provided")?;
 
     if args.save_cookie {
-        save_cookie(&cookie_header)
+        save_cookie(&cookie_header, home_dir.clone())
             .log_and_exit_on_err("Failed to save cookie header")?;
     }
 
