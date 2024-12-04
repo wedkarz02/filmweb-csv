@@ -159,11 +159,11 @@ Optionally you can use the ```--save-cookie``` flag to cache the tokens. That wa
 $ filmweb-csv [OPTIONS] --cookie '<HEADER VALUE>' --save-cookie
 ```
 
-Tokens are saved to ```~/.filmweb-csv``` in plaintext and are valid for about 15 minutes.
+Tokens are saved to ```~/.filmweb-csv/credentials.txt``` in plaintext and are valid for about 15 minutes.
 
 ### Options
 
-Full list of options (assuming ```~/.filmweb-csv``` has valid tokens):
+Full list of fetching options (assuming ```~/.filmweb-csv``` has valid tokens):
 
 ```bash
 # Get rated movies:
@@ -202,7 +202,7 @@ To enable info logging use the ```--verbose``` or ```-v``` flag:
 $ filmweb-csv --fetch movies --from rated --verbose
 ```
 
-Logging to stdout is disabled by default (except for error logs) but logging to a file is always on. To see those logs navigate to ```logs``` directory.
+Logging to stdout is disabled by default (except for error logs) but logging to a file is always on. Logs are saved in the ```~/.filmweb-csv/logs/``` directory.
 
 ## License
 
