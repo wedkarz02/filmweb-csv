@@ -38,7 +38,7 @@ pub struct Args {
     #[arg(long)]
     pub cookie: Option<String>,
 
-    /// Save the cookie header to ~/.filmweb-csv
+    /// Save the cookie header to ~/.filmweb-csv/credentials.txt
     #[arg(long, action)]
     pub save_cookie: bool,
 }

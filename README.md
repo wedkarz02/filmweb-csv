@@ -138,7 +138,7 @@ Options:
   -o, --output <OUTPUT>  Specify the output directory [default: ./exports/]
   -v, --verbose          Log more details to stdout
       --cookie <COOKIE>  Cookie header for authentication
-      --save-cookie      Save the cookie header to ~/.filmweb-csv
+      --save-cookie      Save the cookie header to ~/.filmweb-csv/credentials.txt
   -h, --help             Print help
   -V, --version          Print version
 ```
