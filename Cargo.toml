@@ -1,6 +1,6 @@
 [package]
 name = "filmweb-csv"
-version = "0.2.12"
+version = "0.2.13"
 edition = "2021"
 description = "Effortless Filmweb data -> CSV fetching."
 authors = ["wedkarz02"]
